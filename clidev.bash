@@ -15,6 +15,11 @@ function num()
             tee -a "${HOME}/.num" | \
             sed -e "s|^[[]\([0-9]\+\)[]][ ]\($wd/\)\?|[\1] |"
 
+    elif [[ "$1" = "-c" ]]
+    then
+        # clear the number db
+        >"${HOME}/.num"
+
     elif [[ "$1" =~ ^[0-9]+$ ]]
     then
         local n="$1"
@@ -48,24 +53,24 @@ function vim()
 
 function findf()
 {
-    local where what
+    local where ext
     if [[ $# -eq 2 ]]
     then
         where="$1"
-        what="$2"
+        ext="$2"
     elif [[ $# -eq 0 ]]
     then
         where="."
     else
         where="."
-        what="$1"
+        ext="$1"
     fi
 
     local ignore_re="(^Binary|[.]swp$|[.]pyc$)"
 
-    if [[ -n $what ]]
+    if [[ -n $ext ]]
     then
-        find "$where" -type f -name "*.${what}" | egrep -v "$ignore_re"
+        find "$where" -type f -name "*.${ext}" | egrep -v "$ignore_re"
     else
         find "$where" -type f | egrep -v "$ignore_re"
     fi
@@ -74,9 +79,10 @@ function findf()
 
 function search()
 {
-    local what="$1"
-    local file_type="$2"
+    local pattern="$1"
+    local ext="$2"
     local wd="$(pwd)"
+    num -c
     local n=0
     while IFS="\n" read -r filename
     do
@@ -89,7 +95,7 @@ function search()
                     let n=n+1
                     echo "$result" | num -n $n
                 fi
-            done <<< "$(egrep -Hn "$what" "$filename")"
+            done <<< "$(egrep -Hn "$pattern" "$filename")"
         fi
-    done <<< "$(findf . "$file_type" | sed "s|^[.]/|$wd/|")"
+    done <<< "$(findf "$ext" | sed "s|^[.]/|$wd/|")"
 }
