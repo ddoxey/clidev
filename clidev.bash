@@ -1,5 +1,12 @@
 #!/bin/bash
 
+function highlight()
+{
+    local pattern="$(sed -e 's|\([+/()|]\)|\\\1|g' <<< "$@")"
+    local on='\\\\033[32m'
+    local off='\\\\033[0m'
+    sed -e "s|'|\\\'|g" -e "s/\($pattern\)/${on}\1${off}/g" | xargs echo -e
+}
 
 function num()
 {
@@ -93,7 +100,12 @@ function search()
                 if [[ -n $result ]]
                 then
                     let n=n+1
-                    echo "$result" | num -n $n
+                    if [[ -t 1 ]]
+                    then
+                        echo "$result" | highlight "$pattern" | num -n $n
+                    else
+                        echo "$result" | num -n $n
+                    fi
                 fi
             done <<< "$(egrep -Hn "$pattern" "$filename")"
         fi
