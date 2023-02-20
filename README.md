@@ -16,7 +16,7 @@ Find a file that contains a certain regex and then open it with vim.
 [4] table.cpp:802:            if (expected > 0 && expected == matched)
 [5] table.cpp:850:            if (expected == matched
 ```
-Refer to the numbered list to open the file with vim to the indicated line number.
+Refer to the index in the numbered list to open the file with vim to the indicated line number.
 ```
 [ddoxey@dev src]$ vim 4
 ```
@@ -25,12 +25,12 @@ Later, the Bash history will have the actual vim command executed.
 [ddoxey@dev src]$ vim +802 table.cpp
 ```
 
-This is designed to streamline the file search to vim operation in a CLI only environment. 
+This is designed to eliminate the need/want for the copy & paste when operating in a CLI only situation.
 
 
 ## Functions Defined
 
-### num
+### num [\<index\>]
 
 The `num` function simply prepends the lines received on STDIN with the [n] line numbering
 and updates the ~/.num database with the results for later reference. 
@@ -43,7 +43,7 @@ Number a list of anything.
 [3] table.hpp
 [4] test
 ```
-Then open in `vim`.
+Then open in `vim` with the index number.
 ```
 [ddoxey@dev src]$ vim 3
 ```
@@ -53,12 +53,12 @@ Also use `num` to look up recently `num`bered files.
 table.hpp
 ```
 
-### findf [<dir>] <pattern>
+### findf [\<dir\>] \<pattern\>
 
 This is essentially shorthand for `find . -type f` which also filters out Binary files
 as well as .swp and .pyc files which no one is likely to want to open in `vim`.
 
-### search <pattern> [<ext>]
+### search \<pattern\> [\<ext\>]
 
 This is effectively similar to doing a recursive `grep` on text files. 
 The difference being that the pattern is matched on text files (optionally filtered
