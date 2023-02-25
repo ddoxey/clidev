@@ -17,7 +17,7 @@ function highlight()
         local pattern="$(sed -e 's|\([+/()|]\)|\\\1|g' <<< "$@")"
         local on='\\\\033[32m'
         local off='\\\\033[0m'
-        sed -e "s|'|\\\'|g" -e "s/\($pattern\)/${on}\1${off}/g" | xargs echo -e
+        sed -e "s|'|\\\'|g" -e "s/\($pattern\)/${on}\1${off}/g" -e 's/"/\\"/g' | xargs echo -e
     fi
 }
 
