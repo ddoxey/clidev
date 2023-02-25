@@ -139,7 +139,7 @@ function search()
                     let n=n+1
                     if [[ -t 1 ]]
                     then
-                        echo "$result" | highlight "$pattern" | num -n $n
+                        echo "$result" | num -n $n | highlight "$pattern"
                     else
                         echo "$result" | num -n $n
                     fi
