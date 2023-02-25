@@ -78,15 +78,59 @@ function findf()
     fi
 }
 
+# find index of substring in string
+function string_first_of()
+{
+    local str="$1"
+    local sub="$2"
+    local aft=${str#*$sub}
+    local pos=$(( ${#str} - ${#aft} - ${#sub} ))
+    echo $pos
+    if [[ $pos -lt 0 ]]; then return 1; fi
+    return 0
+}
+
+# find last index of substring in string
+function string_last_of()
+{
+    local str="$1"
+    local sub="$2"
+    local rts="$(rev <<< "$str")"
+    local sop=$(string_first_of "$rts" "$sub")
+    if [[ $sop -lt 0 ]]; then echo "$sop"; return 1; fi
+    echo $(( ${#str} - $sop - 1 ))
+    return 0
+}
+
+# true if string starts with substring
+function string_starts_with()
+{
+    local str="$1"
+    local sub="$2"
+    local pos=$(string_first_of "$str" "$sub")
+    if [[ $pos -eq 0 ]]; then return 0; fi
+    return 1
+}
+
+# true if string ends with substring
+function string_ends_with()
+{
+    local str="$1"
+    local sub="$2"
+    local pos=$(string_first_of "$str" "$sub")
+    if [[ $(( ${#str} - $pos )) -eq ${#sub} ]]; then return 0; fi
+    return 1
+}
+
 # wrapper for /usr/bin/vim opens numbered files
 function vim()
 {
     if [[ $# -eq 1 ]]
     then
+        local n
         local filename="$1"
         if [[ "$filename" =~ ^[0-9]+$ ]]
         then
-            local n
             filename="$(num $1)"
             if [[ "$filename" =~ [:] ]]
             then
@@ -95,7 +139,7 @@ function vim()
             fi
         elif [[ ! "$filename" =~ [/] ]] && [[ ! -e "$filename" ]]
         then
-            if [[ "$filename" =~ [.] ]]
+            if [[ $(string_last_of "$filename" ".") -gt 0 ]]
             then
                 local found="$(find . -type f -name "$filename" 2>/dev/null | head -n 1)"
                 if [[ -n $found ]]
