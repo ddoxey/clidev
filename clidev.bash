@@ -55,27 +55,23 @@ function num()
 # find text files
 function findf()
 {
-    local where ext
-    if [[ $# -eq 2 ]]
+    local where="."
+    local names
+
+    if [[ $# -eq 0 ]] && [[ -d "$1" ]]
     then
         where="$1"
-        ext="$2"
-    elif [[ $# -eq 0 ]]
+        shift
+    fi
+
+    if [[ $# -gt 0 ]]
     then
-        where="."
-    else
-        where="."
-        ext="$1"
+        names="$(printf " \x2Do \x2Dname '*.%s'" "$@" | sed 's/-o //')"
     fi
 
     local ignore_re="(^Binary|[.]swp$|[.]pyc$)"
 
-    if [[ -n $ext ]]
-    then
-        find "$where" -type f -name "*.${ext}" | egrep -v "$ignore_re"
-    else
-        find "$where" -type f | egrep -v "$ignore_re"
-    fi
+    eval "find $where -type f $names | egrep -v \"$ignore_re\""
 }
 
 # find index of substring in string
@@ -164,11 +160,12 @@ function search()
 {
     if [[ $# -lt 1 ]]
     then
-        echo "search <regex> [<ext>]" >&2
+        echo "search <regex> [<ext> ...]" >&2
         return 1
     fi
     local pattern="$1"
-    local ext="$2"
+    shift
+    local exts="$@"
     local wd="$(pwd)"
     num -c
     local n=0
@@ -190,7 +187,7 @@ function search()
                 fi
             done <<< "$(egrep -Hn "$pattern" "$filename")"
         fi
-    done <<< "$(findf "$ext" | sed "s|^[.]/|$wd/|")"
+    done <<< "$(findf $exts | sed "s|^[.]/|$wd/|")"
 }
 
 # enumerate all permutations of the given tokens

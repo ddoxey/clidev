@@ -45,15 +45,16 @@ function install()
 
     if ! grep -q '[.]clidev[.]bash' "$bashrc"
     then
-        echo                                >> "$bashrc"
-        echo 'if [ -f .clidev.bash ]; then' >> "$bashrc"
-        echo '    . .clidev.bash'           >> "$bashrc"
-        echo 'fi'                           >> "$bashrc"
+        echo                                      >> "$bashrc"
+        echo 'if [ -f $HOME/.clidev.bash ]; then' >> "$bashrc"
+        echo '    . $HOME/.clidev.bash'           >> "$bashrc"
+        echo 'fi'                                 >> "$bashrc"
         echo "Updated: $bashrc"
     fi
 
     if [[ -e "$HOME/.clidev.bash" ]]
     then
+        source "$bashrc"
         echo "Complete!"
     else
         echo "Failed."
