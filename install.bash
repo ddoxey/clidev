@@ -29,8 +29,16 @@ function install()
         return 1
     fi
 
-    if [[ ! -e "${HOME}/.clidev.bash" ]]
+    if [[ -e "${HOME}/.clidev.bash" ]]
     then
+        if cp -i "$CLI_DEV" "${HOME}/.clidev.bash"
+        then
+            echo "Updated: ${HOME}/.clidev.bash"
+        else
+            echo "$(basename "$0") aborted" >&2
+            return 1
+        fi
+    else
         cp "$CLI_DEV" "${HOME}/.clidev.bash"
         echo "Copied clidev.bash to $HOME"
     fi
