@@ -58,7 +58,7 @@ function findf()
     local where="."
     local names
 
-    if [[ $# -eq 0 ]] && [[ -d "$1" ]]
+    if [[ $# -gt 0 ]] && [[ -d "$1" ]]
     then
         where="$1"
         shift
@@ -169,11 +169,11 @@ function search()
     local wd="$(pwd)"
     num -c
     local n=0
-    while IFS="\n" read -r filename
+    while IFS=$'\n' read -r filename
     do
         if [[ -f "$filename" ]]
         then
-            while IFS="\n" read -r result
+            while IFS=$'\n' read -r result
             do
                 if [[ -n $result ]]
                 then
@@ -211,7 +211,7 @@ function permute()
     shift
     local p_len=$#
 
-    while IFS="\n" read -r permutation
+    while IFS=$'\n' read -r permutation
     do
         local ptokens=($permutation)
         local k=0
