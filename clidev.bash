@@ -17,38 +17,86 @@ function highlight()
         local pattern="$(sed -e 's|\([+/()|]\)|\\\1|g' <<< "$@")"
         local on='\\\\033[32m'
         local off='\\\\033[0m'
-        sed -e "s|'|\\\'|g" -e "s/\($pattern\)/${on}\1${off}/g" -e 's/"/\\"/g' | xargs echo -e
+        sed -e "s|'|\\\'|g"                       \
+            -e "s/\($pattern\)/${on}\1${off}/g"   \
+            -e 's/"/\\"/g'                      | \
+            xargs echo -e
     fi
+}
+
+# expand file paths to absolute paths
+function abspath() {
+    awk -F: -v OFS=: '{
+        if ($1 ~ /^\//) {  # already an absolute path
+            abs = $1
+        } else {
+            cmd = "realpath -q \"" $1 "\""
+            ret = cmd | getline abs
+            close(cmd)
+            if (ret <= 0) abs = $1  # failed
+        }
+
+        $1 = abs  # overwrite
+        print
+    }'
+}
+
+# convert paths to relative
+function relpath() {
+    awk -F: -v OFS=: -v base="$PWD" ' {
+        n = ""
+        if (match($1, /^[0-9]+ /)) {
+            n = substr(line, RSTART, RLENGTH)
+            $1 = substr($1, RLENGTH + 1)
+        }
+        cmd = "realpath -q --relative-to=\"" base "\" \"" $1 "\" 2>/dev/null"
+        ret = cmd | getline rel
+        close(cmd)
+        if (ret <= 0) rel = $1  # failed
+        if (n) $1 = n " " rel
+        else $1 = rel
+        print
+    }'
 }
 
 # number lines and add them to the ~/.num database
 function num()
 {
+    local num_db="${HOME}/.num"
+
     if [[ $# -eq 0 ]]
     then
-        awk '{printf("[%d] %s\n", NR, $0)}' | \
-            tee "${HOME}/.num" | \
-            sed -e "s|^[[]\([0-9]\+\)[]][ ]\($wd/\)\?|[\1] |"
+        abspath                               | \
+            awk '{printf("%d|%s\n", NR, $0)}' | \
+            tee "${num_db}"                   | \
+            sed -e 's/[|]/ /'                   \
+                -e "s|$(pwd)/||"
 
-    elif [[ $# -eq 2 ]] && [[ "$1" == "-n" ]] && [[ "$2" =~ ^[0-9]+$ ]]
+    elif [[ $# -eq 2 ]]
     then
-        awk -v N="$2" '{printf("[%d] %s\n", N, $0)}' | \
-            tee -a "${HOME}/.num" | \
-            sed -e "s|^[[]\([0-9]\+\)[]][ ]\($wd/\)\?|[\1] |"
-
+        if [[ "$1" == "-a" ]]
+        then
+            # add an entry with the provided index
+            abspath                                        | \
+                awk -v N="$2" '{printf("%d|%s\n", N, $0)}' | \
+                tee -a "${num_db}"                         | \
+                sed -e 's/[|]/ /'                            \
+                    -e "s|$(pwd)/||"
+        fi
     elif [[ "$1" = "-c" ]]
     then
         # clear the number db
-        >"${HOME}/.num"
+        >"${num_db}"
 
     elif [[ "$1" =~ ^[0-9]+$ ]]
     then
         local n="$1"
         local wd="$(pwd)"
-        touch "${HOME}/.num"
-        grep "^[[]${n}[]][ ]" "${HOME}/.num"       | \
-            sed -e "s|^[[][0-9]\+[]][ ]\($wd/\)\?||" \
-                -e 's/:\([0-9]\+\):.\+$/:\1/'
+        touch "${num_db}"
+        grep "^${n}[|]" "${num_db}"          | \
+            sed -e 's/^[0-9]\+[|]//'           \
+                -e 's/:\([0-9]\+\):.\+$/:\1/'  \
+                -e "s|$wd/||"
     fi
 }
 
@@ -67,9 +115,10 @@ function findf()
     if [[ $# -gt 0 ]]
     then
         names="$(printf " \x2Do \x2Dname '*.%s'" "$@" | sed 's/-o //')"
+        names="-a \\( $names \\)"
     fi
 
-    local ignore_re="(^Binary|[.]swp$|[.]pyc$)"
+    local ignore_re="[.](swp|pyc)$"
 
     eval "find $where -type f $names | egrep -v \"$ignore_re\""
 }
@@ -121,37 +170,24 @@ function string_ends_with()
 # wrapper for /usr/bin/vim opens numbered files
 function vim()
 {
-    if [[ $# -eq 1 ]]
+    if [[ $# -gt 1 ]]
     then
+        /usr/bin/vim "$@"
+    else
         local n
         local filename="$1"
+
         if [[ "$filename" =~ ^[0-9]+$ ]]
         then
-            filename="$(num $1)"
-            if [[ "$filename" =~ [:] ]]
-            then
-                n="+$(awk -F: '{print $2}' <<< "$filename")"
-                filename="$(awk -F: '{print $1}' <<< "$filename")"
-            fi
-        elif [[ ! "$filename" =~ [/] ]] && [[ ! -e "$filename" ]]
-        then
-            if [[ $(string_last_of "$filename" ".") -gt 0 ]]
-            then
-                local found="$(find . -type f -name "$filename" 2>/dev/null | head -n 1)"
-                if [[ -n $found ]]
-                then
-                    filename="$(sed 's|^[.]/||' <<< "$found")"
-                fi
-            fi
+            filename="$(num $filename)"
         fi
-        if [[ "${filename:0:1}" == "/" ]]
+        if [[ "$filename" =~ [:][0-9]+$ ]]
         then
-            filename="$(sed "s|$(pwd)/||" <<< "$filename")"
+            n="+$(awk -F: '{print $NF}' <<< "$filename")"
+            filename="$(sed 's|:[0-9]\+$||' <<< "$filename")"
         fi
         history -s vim $n "$filename"
         /usr/bin/vim $n "$filename"
-    else
-        /usr/bin/vim "$@"
     fi
 }
 
