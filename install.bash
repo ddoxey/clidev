@@ -6,60 +6,43 @@
 ##
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_DEV="$SRC_DIR/clidev.bash"
+declare -A cli_file=(
+    [bash]="$SRC_DIR/clidev.bash"
+    [vim]="$SRC_DIR/clidev.vim"
+)
 
-
-function find_bashrc()
+function find_rc()
 {
-    for rc in "$HOME/.bashrc" "$HOME/.bash_profile"
+    local type="$1"
+    for rc in "$HOME/.${type}rc" "$HOME/.${type}_profile"
     do
-        if [[ -e "$rc" ]]; then echo "$rc"; break; fi
+        if [[ -e "$rc" ]]; then echo "$rc"; return 0; fi
     done
+    touch "$HOME/.${type}rc"
+    echo "$HOME/.${type}rc"
 }
 
 
 function install()
 {
-    local bashrc="$1"
-    if [[ -z $bashrc ]]; then bashrc="$(find_bashrc)"; fi
-    if [[ -z $bashrc ]]
-    then
-        echo "Unable to locate .bashrc in $HOME"          >&2
-        echo "USAGE: $(basename "$0") [<path-to-bashrc>]" >&2
-        return 1
-    fi
+    for type in "${!cli_file[@]}" 
+    do
+        local cli_rc_src="${cli_file[$type]}"
+        local cli_fn="$(basename "$cli_rc_src")"
+        local rc="$(find_rc $type)"
+        local rc_dir="$(dirname "$rc")"
+        local cli_rc="${rc_dir}/.${cli_fn}"
 
-    if [[ -e "${HOME}/.clidev.bash" ]]
-    then
-        if cp -i "$CLI_DEV" "${HOME}/.clidev.bash"
+        if ! cp -i "$cli_rc_src" "${cli_rc}"
         then
-            echo "Updated: ${HOME}/.clidev.bash"
-        else
-            echo "$(basename "$0") aborted" >&2
+            echo "$(basename "$0") failed to write $cli_rc -- aborted" >&2
             return 1
         fi
-    else
-        cp "$CLI_DEV" "${HOME}/.clidev.bash"
-        echo "Copied clidev.bash to $HOME"
-    fi
-
-    if ! grep -q '[.]clidev[.]bash' "$bashrc"
-    then
-        echo                                      >> "$bashrc"
-        echo 'if [ -f $HOME/.clidev.bash ]; then' >> "$bashrc"
-        echo '    . $HOME/.clidev.bash'           >> "$bashrc"
-        echo 'fi'                                 >> "$bashrc"
-        echo "Updated: $bashrc"
-    fi
-
-    if [[ -e "$HOME/.clidev.bash" ]]
-    then
-        source "$bashrc"
-        echo "Complete!"
-    else
-        echo "Failed."
-        return 1
-    fi
+        if ! grep -q "$cli_rc" "$rc"
+        then
+            echo "source $cli_rc" >> "$rc" 
+        fi
+    done
 
     return 0
 }

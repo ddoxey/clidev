@@ -7,6 +7,11 @@ function cls()
     for n in $(seq 1 $(tput lines)); do echo; done
 }
 
+# strip ANSI escape sequences
+function strip_ansi() {
+  sed -E $'s/\e\\[[0-9;]*[mK]//g'
+}
+
 # highlight lines on STDIN with the given regex
 function highlight()
 {
@@ -68,7 +73,7 @@ function num()
     then
         abspath                               | \
             awk '{printf("%d|%s\n", NR, $0)}' | \
-            tee "${num_db}"                   | \
+            tee >( strip_ansi > "${num_db}" ) | \
             sed -e 's/[|]/ /'                   \
                 -e "s|$(pwd)/||"
 
@@ -79,7 +84,7 @@ function num()
             # add an entry with the provided index
             abspath                                        | \
                 awk -v N="$2" '{printf("%d|%s\n", N, $0)}' | \
-                tee -a "${num_db}"                         | \
+                tee >( strip_ansi > "${num_db}" )          | \
                 sed -e 's/[|]/ /'                            \
                     -e "s|$(pwd)/||"
         fi
@@ -104,23 +109,21 @@ function num()
 function findf()
 {
     local where="."
-    local names
 
-    if [[ $# -gt 0 ]] && [[ -d "$1" ]]
+    if [[ $# -gt 1 ]] && [[ -d "$1" ]]
     then
         where="$1"
         shift
     fi
 
+    unset names
     if [[ $# -gt 0 ]]
     then
         names="$(printf " \x2Do \x2Dname '*.%s'" "$@" | sed 's/-o //')"
         names="-a \\( $names \\)"
     fi
 
-    local ignore_re="[.](swp|pyc)$"
-
-    eval "find $where -type f $names | egrep -v \"$ignore_re\""
+    eval "find $where -type f $names"
 }
 
 # find index of substring in string
@@ -201,29 +204,23 @@ function search()
     fi
     local pattern="$1"
     shift
-    local exts="$@"
-    local wd="$(pwd)"
-    num -c
-    local n=0
-    while IFS=$'\n' read -r filename
-    do
-        if [[ -f "$filename" ]]
-        then
-            while IFS=$'\n' read -r result
-            do
-                if [[ -n $result ]]
-                then
-                    let n=n+1
-                    if [[ -t 1 ]]
-                    then
-                        echo "$result" | num -n $n | highlight "$pattern"
-                    else
-                        echo "$result" | num -n $n
-                    fi
-                fi
-            done <<< "$(egrep -Hn "$pattern" "$filename")"
-        fi
-    done <<< "$(findf $exts | sed "s|^[.]/|$wd/|")"
+
+    if [[ $# -eq 0 ]]
+    then
+        set -- "cpp" "hpp" "c" "h" "py"
+    fi
+    local names="$(printf " \x2Do \x2Dname '*.%s'" "$@" | sed 's/-o //')"
+
+    set -- "./.git" "./build"
+    local prunes="$(printf " \x2Do \x2Dpath '%s'" "$@" | sed 's/-o //')"
+
+    local cmd
+    cmd="${cmd}find . \( $prunes \) -prune "
+    cmd="${cmd}-o -type f \\( $names \\) "
+    cmd="${cmd}-exec grep -Hn --color=always \"${pattern}\" {} \; "
+    cmd="${cmd}| sed 's|[.]/||' "
+
+    eval "$cmd" | num
 }
 
 # enumerate all permutations of the given tokens
